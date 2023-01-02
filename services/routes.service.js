@@ -215,6 +215,17 @@ module.exports = {
 				return result
 			}
 		},
+		hostCount: {
+			type: "number",
+			virtual: true,
+			populate: function (ctx, values, entities, field) {
+				return Promise.all(
+					entities.map(async entity => {
+						return await ctx.call("v1.routes.hosts.count", { route: this.encodeID(entity._id) })
+					})
+				);
+			}
+		},
 	},
 
 
