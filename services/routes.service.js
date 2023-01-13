@@ -51,6 +51,11 @@ module.exports = {
 				validate: 'validatevHost'
 			},
 
+			zone: {
+				type: "string",
+				default: null,
+				required: false
+			},
 
 			metricSession: {
 				type: "string",
@@ -90,6 +95,17 @@ module.exports = {
 				}
 			},
 
+			hostCount: {
+				type: "number",
+				virtual: true,
+				populate: function (ctx, values, entities, field) {
+					return Promise.all(
+						entities.map(async entity => {
+							return await ctx.call("v1.routes.hosts.count", { route: this.encodeID(entity._id) })
+						})
+					);
+				}
+			},
 			...Membership.FIELDS,
 
 			options: { type: "object" },
@@ -171,17 +187,17 @@ module.exports = {
 		},
 		vHosts: {
 			params: {
-
+				zone: { type: "string", optional: true },
 			},
 			permissions: ['routes.vHosts'],
 			async handler(ctx) {
 				const params = Object.assign({}, ctx.params);
 				return this.findEntities(null, {
 					query: {
-						deletedAt: null
+						zone: params.zone
 					},
 					fields: ['id', 'vHost', 'owner', 'deletedAt'],
-					scope: false
+					scope: '-membership'
 				})
 			},
 		},
@@ -213,17 +229,6 @@ module.exports = {
 				}
 
 				return result
-			}
-		},
-		hostCount: {
-			type: "number",
-			virtual: true,
-			populate: function (ctx, values, entities, field) {
-				return Promise.all(
-					entities.map(async entity => {
-						return await ctx.call("v1.routes.hosts.count", { route: this.encodeID(entity._id) })
-					})
-				);
 			}
 		},
 	},
