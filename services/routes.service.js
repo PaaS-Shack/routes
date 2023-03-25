@@ -201,36 +201,36 @@ module.exports = {
 				})
 			},
 		},
-		sync: {
-			params: {
-				target: { type: "string", min: 3, optional: true },
-			},
-			permissions: ['routes.sync'],
-			async handler(ctx) {
-				const params = Object.assign({}, ctx.params);
-				const list = await ctx.call("$node.list");
-
-				const result = [];
-				const promises = [];
-				for (let index = 0; index < list.length; index++) {
-					const node = list[index];
-					promises.push(ctx.call('v1.proxy.agent.sync', {}, { nodeID: node.id }));
-				}
-
-				const settled = await Promise.allSettled(promises);
-				for (let index = 0; index < list.length; index++) {
-					const node = list[index];
-					result.push({
-						nodeID: node.id,
-						status: settled[index].status,
-						info: settled[index].value,
-						reason: settled[index].reason,
-					});
-				}
-
-				return result
-			}
-		},
+        sync: {
+            rest: "GET /sync",
+            params: {
+                target: { type: "string", min: 3, optional: true },
+            },
+            permissions: ['routes.sync'],
+            async handler(ctx) {
+                return this.scrapeAgents(ctx, 'v1.proxy.agent.sync').then((res)=>res.filter((item) => item.status == 'fulfilled'))
+            }
+        },
+        stats: {
+            rest: "GET /stats",
+            params: {
+                target: { type: "string", min: 3, optional: true },
+            },
+            permissions: ['routes.stats'],
+            async handler(ctx) {
+                return this.scrapeAgents(ctx, 'v1.proxy.agent.stats').then((res)=>res.filter((item) => item.status == 'fulfilled'))
+            }
+        },
+        info: {
+            rest: "GET /info",
+            params: {
+                target: { type: "string", min: 3, optional: true },
+            },
+            permissions: ['routes.info'],
+            async handler(ctx) {
+                return this.scrapeAgents(ctx, 'v1.proxy.agent.info').then((res)=>res.filter((item) => item.status == 'fulfilled'))
+            }
+        },
 	},
 
 
@@ -246,6 +246,29 @@ module.exports = {
 	 */
 	methods: {
 
+        async scrapeAgents(ctx, action, params = {}) {
+            const list = await ctx.call("$node.list");
+
+            const result = [];
+            const promises = [];
+            for (let index = 0; index < list.length; index++) {
+                const node = list[index];
+                promises.push(ctx.call(action, params, { nodeID: node.id }));
+            }
+
+            const settled = await Promise.allSettled(promises);
+            for (let index = 0; index < list.length; index++) {
+                const node = list[index];
+                result.push({
+                    nodeID: node.id,
+                    status: settled[index].status,
+                    info: settled[index].value,
+                    reason: settled[index].reason,
+                });
+            }
+
+            return result
+        },
 		generateSession() {
 			return crypto.randomBytes(10).toString("hex");
 		},
