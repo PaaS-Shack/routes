@@ -8,7 +8,7 @@ const { MoleculerClientError } = require("moleculer").Errors;
 const crypto = require("crypto");
 
 /**
- * Addons service
+ * Routes service
  */
 module.exports = {
 	name: "routes",
@@ -16,8 +16,9 @@ module.exports = {
 
 	mixins: [
 		DbService({
-
+			permissions: 'routes'
 		}),
+		ConfigLoader(['routes.**']),
 		Membership({
 			permissions: 'routes'
 		})
@@ -36,12 +37,6 @@ module.exports = {
 
 
 		fields: {
-			id: {
-				type: "string",
-				primaryKey: true,
-				secure: true,
-				columnName: "_id"
-			},
 
 			vHost: {
 				type: "string",
@@ -106,67 +101,34 @@ module.exports = {
 					);
 				}
 			},
+
+			...DbService.FIELDS,
 			...Membership.FIELDS,
-
-			options: { type: "object" },
-			createdAt: {
-				type: "number",
-				readonly: true,
-				onCreate: () => Date.now()
-			},
-			updatedAt: {
-				type: "number",
-				readonly: true,
-				onUpdate: () => Date.now()
-			},
-			deletedAt: {
-				type: "number",
-				readonly: true,
-				hidden: "byDefault",
-				onRemove: () => Date.now()
-			}
-
 		},
-		defaultPopulates: ["hosts", "owner"],
+
+		defaultPopulates: [
+			"hosts",
+		],
 
 		scopes: {
-			notDeleted: { deletedAt: null },
+			...DbService.SCOPE,
 			...Membership.SCOPE,
 		},
 
-		defaultScopes: ["notDeleted", ...Membership.DSCOPE]
+		defaultScopes: [
+			...DbService.DSCOPE,
+			...Membership.DSCOPE
+		],
+
+		config: {
+
+		}
 	},
 	/**
 	 * Actions
 	 */
 	actions: {
-		create: {
-			permissions: ['routes.create']
-		},
-		list: {
-			permissions: ['routes.list']
-		},
-		find: {
-			rest: "GET /find",
-			permissions: ['routes.find']
-		},
-		count: {
-			rest: "GET /count",
-			permissions: ['routes.count']
-		},
-		get: {
-			needEntity: true,
-			permissions: ['routes.get']
-		},
-		update: {
-			needEntity: true,
-			permissions: ['routes.update']
-		},
-		replace: false,
-		remove: {
-			needEntity: true,
-			permissions: ['routes.remove']
-		},
+		
 
 		resolveRoute: {
 			params: {
@@ -201,36 +163,36 @@ module.exports = {
 				})
 			},
 		},
-        sync: {
-            rest: "GET /sync",
-            params: {
-                target: { type: "string", min: 3, optional: true },
-            },
-            permissions: ['routes.sync'],
-            async handler(ctx) {
-                return this.scrapeAgents(ctx, 'v1.proxy.agent.sync').then((res)=>res.filter((item) => item.status == 'fulfilled'))
-            }
-        },
-        stats: {
-            rest: "GET /stats",
-            params: {
-                target: { type: "string", min: 3, optional: true },
-            },
-            permissions: ['routes.stats'],
-            async handler(ctx) {
-                return this.scrapeAgents(ctx, 'v1.proxy.agent.stats').then((res)=>res.filter((item) => item.status == 'fulfilled'))
-            }
-        },
-        info: {
-            rest: "GET /info",
-            params: {
-                target: { type: "string", min: 3, optional: true },
-            },
-            permissions: ['routes.info'],
-            async handler(ctx) {
-                return this.scrapeAgents(ctx, 'v1.proxy.agent.info').then((res)=>res.filter((item) => item.status == 'fulfilled'))
-            }
-        },
+		sync: {
+			rest: "GET /sync",
+			params: {
+				target: { type: "string", min: 3, optional: true },
+			},
+			permissions: ['routes.sync'],
+			async handler(ctx) {
+				return this.scrapeAgents(ctx, 'v1.proxy.agent.sync').then((res) => res.filter((item) => item.status == 'fulfilled'))
+			}
+		},
+		stats: {
+			rest: "GET /stats",
+			params: {
+				target: { type: "string", min: 3, optional: true },
+			},
+			permissions: ['routes.stats'],
+			async handler(ctx) {
+				return this.scrapeAgents(ctx, 'v1.proxy.agent.stats').then((res) => res.filter((item) => item.status == 'fulfilled'))
+			}
+		},
+		info: {
+			rest: "GET /info",
+			params: {
+				target: { type: "string", min: 3, optional: true },
+			},
+			permissions: ['routes.info'],
+			async handler(ctx) {
+				return this.scrapeAgents(ctx, 'v1.proxy.agent.info').then((res) => res.filter((item) => item.status == 'fulfilled'))
+			}
+		},
 	},
 
 
@@ -246,29 +208,29 @@ module.exports = {
 	 */
 	methods: {
 
-        async scrapeAgents(ctx, action, params = {}) {
-            const list = await ctx.call("$node.list");
+		async scrapeAgents(ctx, action, params = {}) {
+			const list = await ctx.call("$node.list");
 
-            const result = [];
-            const promises = [];
-            for (let index = 0; index < list.length; index++) {
-                const node = list[index];
-                promises.push(ctx.call(action, params, { nodeID: node.id }));
-            }
+			const result = [];
+			const promises = [];
+			for (let index = 0; index < list.length; index++) {
+				const node = list[index];
+				promises.push(ctx.call(action, params, { nodeID: node.id }));
+			}
 
-            const settled = await Promise.allSettled(promises);
-            for (let index = 0; index < list.length; index++) {
-                const node = list[index];
-                result.push({
-                    nodeID: node.id,
-                    status: settled[index].status,
-                    info: settled[index].value,
-                    reason: settled[index].reason,
-                });
-            }
+			const settled = await Promise.allSettled(promises);
+			for (let index = 0; index < list.length; index++) {
+				const node = list[index];
+				result.push({
+					nodeID: node.id,
+					status: settled[index].status,
+					info: settled[index].value,
+					reason: settled[index].reason,
+				});
+			}
 
-            return result
-        },
+			return result
+		},
 		generateSession() {
 			return crypto.randomBytes(10).toString("hex");
 		},

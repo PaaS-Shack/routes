@@ -5,14 +5,16 @@ const DbService = require("db-mixin");
 const { MoleculerClientError } = require("moleculer").Errors;
 
 /**
- * attachments of addons service
+ * Route hosts service
  */
 module.exports = {
 	name: "routes.hosts",
 	version: 1,
 
 	mixins: [
-		DbService({}),
+		DbService({
+			permissions: "routes.hosts"
+		}),
 	],
 
 	/**
@@ -29,12 +31,6 @@ module.exports = {
 		rest: "/v1/routes/:route/hosts",
 
 		fields: {
-			id: {
-				type: "string",
-				primaryKey: true,
-				secure: true,
-				columnName: "_id"
-			},
 			route: {
 				type: "string",
 				required: true,
@@ -91,31 +87,22 @@ module.exports = {
 			},
 
 
-			options: { type: "object" },
-			createdAt: {
-				type: "number",
-				readonly: true,
-				onCreate: () => Date.now()
-			},
-			updatedAt: {
-				type: "number",
-				readonly: true,
-				onUpdate: () => Date.now()
-			},
-			deletedAt: {
-				type: "number",
-				readonly: true,
-				hidden: "byDefault",
-				onRemove: () => Date.now()
-			}
-		},
+            ...DbService.FIELDS,
+        },
+
+        defaultPopulates: [
+           
+        ],
 
 		scopes: {
 			async route(query, ctx, params) { return this.validateHasRoutePermissions(query, ctx, params) },
-			notDeleted: { deletedAt: null }
+			...DbService.SCOPE,
 		},
 
-		defaultScopes: ["route", "notDeleted"]
+		defaultScopes: [
+			"route",
+			...DbService.DSCOPE,
+		]
 	},
 
 	/**
@@ -123,48 +110,7 @@ module.exports = {
 	 */
 
 	actions: {
-		create: {
-			permissions: ['routes.hosts.create']
-		},
-		list: {
-			permissions: ['routes.hosts.list'],
-			params: {
-				route: { type: "string" }
-			}
-		},
-
-		find: {
-			rest: "GET /find",
-			permissions: ['routes.hosts.find'],
-			params: {
-				//route: { type: "string" }
-			}
-		},
-
-		count: {
-			rest: "GET /count",
-			permissions: ['routes.hosts.count'],
-			params: {
-				route: { type: "string" }
-			}
-		},
-
-		get: {
-			needEntity: true,
-			permissions: ['routes.hosts.get']
-		},
-
-		update: {
-			needEntity: true,
-			permissions: ['routes.hosts.update']
-		},
-
-		replace: false,
-
-		remove: {
-			needEntity: true,
-			permissions: ['routes.hosts.remove']
-		},
+		
 		resolveHost: {
 			params: {
 				route: { type: "string", optional: false },

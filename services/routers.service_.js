@@ -15,7 +15,9 @@ module.exports = {
 	version: 1,
 
 	mixins: [
-		DbService({})
+		DbService({
+			permissions:'routers'
+		})
 	],
 
 	/**
